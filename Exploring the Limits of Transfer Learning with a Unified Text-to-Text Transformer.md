@@ -17,7 +17,6 @@
 你可以把它想象成**中世纪的手工艺人**：
 - 木匠只会做家具
 - 铁匠只会打铁
-- 裁缝只会做衣服
 - 每个行业都是独立的技能和工具
 
 这种模式带来了巨大的成本和复杂性：
@@ -25,7 +24,7 @@
 - 需要训练和部署多个专门的模型
 - 模型之间无法共享知识
 
-这篇论文的核心洞见就是：**我们能不能像工业革命一样，把这些"手工作坊"统一成"流水线生产"？**
+这篇论文的核心洞见是：**我们能不能像工业革命一样，把这些"手工作坊"统一成"流水线生产"？**
 
 ---
 
@@ -38,7 +37,6 @@
 - 英译德需要专门的德语翻译
 - 法译英需要专门的法语翻译
 - 每种语言组合都需要专门的人
-- 效率低，成本高
 
 ### 2.2 新的 T5 方式：统一流水线
 
@@ -47,46 +45,35 @@
 - 输出就是翻译结果："Hallo"
 - 一个翻译员可以处理所有语言组合！
 
-这个"任务前缀"的灵感来自 **CAME**（Constrained Abstractive Meaning Representation），但 T5 把这个思想发扬光大了！
-
 ---
 
 ## 3. 技术核心拆解：T5 做了什么？
 
 ### 3.1 统一的文本到文本框架
 
-T5 的核心思想是把**所有任务都转化为文本生成问题**：
+T5 把所有任务都转化为文本生成问题：
 
 | 任务 | T5 的输入格式 | T5 的输出 |
 | :--- | :--- | :--- |
-| **机器翻译** | `translate English to German: Hello, how are you?` | `Hallo, wie geht es dir?` |
-| **文本分类** | `cola sentence: This is a sentence.` | `acceptable` |
-| **问答** | `question: Where is Paris? context: Paris is in France.` | `France` |
-| **摘要生成** | `summarize: [长文本...]` | `[短摘要...]` |
-| **情感分析** | `sentiment: This movie is great!` | `positive` |
+| 机器翻译 | `translate English to German: Hello` | `Hallo` |
+| 文本分类 | `cola sentence: This is a sentence.` | `acceptable` |
+| 问答 | `question: Where is Paris?` | `France` |
+| 摘要生成 | `summarize: [长文本...]` | `[短摘要...]` |
 
 ### 3.2 预训练目标：Span Corruption
 
-T5 使用了一种叫做 **Span Corruption** 的预训练目标：
-
+T5 使用了 **Span Corruption** 的预训练目标：
 - 随机掩盖输入文本中的连续片段（比如 3 个词）
 - 用 `[MASK]` 标记代替
 - 训练模型重建被掩盖的文本
 
-这比 BERT 的 MLM 更"粗"一些：
-- BERT：掩盖单个词 `The [MASK] is a planet.`
-- T5：掩盖连续片段 `The [MASK] [MASK] a planet.`
-
-### 3.3 实验设计：系统的消融研究
-
-T5 最有价值的部分是其**系统性的实验设计**：
+### 3.3 系统性消融研究
 
 论文探索了以下维度：
-- **架构对比**：Encoder-Decoder vs Decoder-only vs Prefix LM
+- **架构对比**：Encoder-Decoder vs Decoder-only
 - **预训练目标**：MLM vs Span Corruption vs 自回归
 - **数据选择**：不同数据集的效果对比
-- **微调方法**：不同策略的效果
-- **模型规模**：从 Small 到 Base 到 Large 到 XL 到 XXL
+- **模型规模**：从 Small 到 XXL
 
 ---
 
@@ -94,15 +81,15 @@ T5 最有价值的部分是其**系统性的实验设计**：
 
 | 模型版本 | 参数量 | 特点 |
 | :--- | :--- | :--- |
-| **T5-Small** | 60M | 轻量级实验 |
-| **T5-Base** | 220M | 基准模型 |
-| **T5-Large** | 770M | 大规模实验 |
-| **T5-3B** | 3B | 超大规模 |
-| **T5-11B** | 11B | 最大版本 |
+| T5-Small | 60M | 轻量级实验 |
+| T5-Base | 220M | 基准模型 |
+| T5-Large | 770M | 大规模实验 |
+| T5-3B | 3B | 超大规模 |
+| T5-11B | 11B | 最大版本 |
 
 **核心技术特点**：
 - 基于标准 Transformer 架构
-- Encoder-Decoder 结构（不同于 BERT 的 Encoder-only 和 GPT 的 Decoder-only）
+- Encoder-Decoder 结构
 - C4 数据集（Colossal Clean Crawled Corpus）：750GB 高质量清洗文本
 
 ---
@@ -113,26 +100,18 @@ T5 最有价值的部分是其**系统性的实验设计**：
 
 | 架构类型 | 表现 | 说明 |
 | :--- | :--- | :--- |
-| **Encoder-Decoder** | 最佳 | 适合生成任务，需要同时理解输入和生成输出 |
-| **Decoder-only** | 次之 | 适合纯生成任务，但需要更长训练 |
-| **Prefix LM** | 介于两者之间 | 试图结合两者优势 |
+| Encoder-Decoder | 最佳 | 适合生成任务 |
+| Decoder-only | 次之 | 适合纯生成任务 |
+| Prefix LM | 介于两者之间 | 试图结合两者优势 |
 
 ### 5.2 预训练目标结论
 
 - **Span Corruption** 效果最好
 - 掩码比例 15% 最优
-- 更长的预训练（更多步数）效果更好
-
-### 5.3 数据集结论
-
-- C4 数据集（清洗后的 Common Crawl）效果最好
-- 数据质量比数据数量更重要
-- 去重和过滤对性能至关重要
+- 更长的预训练效果更好
 
 ---
 
 ## 6. 一句话总结：这篇论文的根本启示
 
 **T5 证明了：所有 NLP 任务本质上都是"文本到文本"的问题，可以用统一的框架来处理。这为后来的大模型时代奠定了方法论基础——一个预训练模型，通过简单的提示或微调，可以处理各种不同的任务。**
-
-T5 的系统消融研究不仅产出了一个强大的模型，更重要的是产出了宝贵的经验教训，影响了后来 GPT、BART、T0 等众多模型的设计。
